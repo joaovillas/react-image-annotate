@@ -84,319 +84,330 @@ export const MainLayout = ({
     const fn = (...args: any) =>
       params.length > 0
         ? dispatch(
-            ({
-              type,
-              ...params.reduce((acc, p, i) => ((acc[p] = args[i]), acc), {}),
-            }: any)
+          ({
+            type,
+            ...params.reduce((acc, p, i) => ((acc[p] = args[i]), acc), {}),
+          }: any)
           )
         : dispatch({ type, ...args[0] })
-    memoizedActionFns.current[fnKey] = fn
-    return fn
+memoizedActionFns.current[fnKey] = fn
+return fn
   }
 
-  const { currentImageIndex, activeImage } = getActiveImage(state)
-  let nextImage
-  if (currentImageIndex !== null) {
-    nextImage = state.images[currentImageIndex + 1]
+const { currentImageIndex, activeImage } = getActiveImage(state)
+let nextImage
+if (currentImageIndex !== null) {
+  nextImage = state.images[currentImageIndex + 1]
+}
+
+useKey(() => dispatch({ type: "CANCEL" }), {
+  detectKeys: [27],
+})
+
+const isAVideoFrame = activeImage && activeImage.frameTime !== undefined
+const innerContainerRef = useRef()
+const hotkeyHandlers = useDispatchHotkeyHandlers({ dispatch })
+
+let impliedVideoRegions = useImpliedVideoRegions(state)
+
+const refocusOnMouseEvent = useCallback((e) => {
+  if (!innerContainerRef.current) return
+  if (innerContainerRef.current.contains(document.activeElement)) return
+  if (innerContainerRef.current.contains(e.target)) {
+    innerContainerRef.current.focus()
+    e.target.focus()
   }
+}, [])
 
-  useKey(() => dispatch({ type: "CANCEL" }), {
-    detectKeys: [27],
-  })
-
-  const isAVideoFrame = activeImage && activeImage.frameTime !== undefined
-  const innerContainerRef = useRef()
-  const hotkeyHandlers = useDispatchHotkeyHandlers({ dispatch })
-
-  let impliedVideoRegions = useImpliedVideoRegions(state)
-
-  const refocusOnMouseEvent = useCallback((e) => {
-    if (!innerContainerRef.current) return
-    if (innerContainerRef.current.contains(document.activeElement)) return
-    if (innerContainerRef.current.contains(e.target)) {
-      innerContainerRef.current.focus()
-      e.target.focus()
+const canvas = (
+  <ImageCanvas
+    {...settings}
+    showCrosshairs={
+      settings.showCrosshairs &&
+      !["select", "pan", "zoom"].includes(state.selectedTool)
     }
-  }, [])
-
-  const canvas = (
-    <ImageCanvas
-      {...settings}
-      showCrosshairs={
-        settings.showCrosshairs &&
-        !["select", "pan", "zoom"].includes(state.selectedTool)
-      }
-      key={state.selectedImage}
-      showMask={state.showMask}
-      fullImageSegmentationMode={state.fullImageSegmentationMode}
-      autoSegmentationOptions={state.autoSegmentationOptions}
-      showTags={state.showTags}
-      allowedArea={state.allowedArea}
-      modifyingAllowedArea={state.selectedTool === "modify-allowed-area"}
-      regionClsList={state.regionClsList}
-      regionTagList={state.regionTagList}
-      regions={
-        state.annotationType === "image"
-          ? activeImage.regions || []
-          : impliedVideoRegions
-      }
-      realSize={activeImage ? activeImage.realSize : undefined}
-      videoPlaying={state.videoPlaying}
-      imageSrc={state.annotationType === "image" ? activeImage.src : null}
-      videoSrc={state.annotationType === "video" ? state.videoSrc : null}
-      pointDistancePrecision={state.pointDistancePrecision}
-      createWithPrimary={state.selectedTool.includes("create")}
-      dragWithPrimary={state.selectedTool === "pan"}
-      zoomWithPrimary={state.selectedTool === "zoom"}
-      showPointDistances={state.showPointDistances}
-      videoTime={
-        state.annotationType === "image"
-          ? state.selectedImageFrameTime
-          : state.currentVideoTime
-      }
-      keypointDefinitions={state.keypointDefinitions}
-      onMouseMove={action("MOUSE_MOVE")}
-      onMouseDown={action("MOUSE_DOWN")}
-      onMouseUp={action("MOUSE_UP")}
-      onChangeRegion={action("CHANGE_REGION", "region")}
-      onBeginRegionEdit={action("OPEN_REGION_EDITOR", "region")}
-      onCloseRegionEdit={action("CLOSE_REGION_EDITOR", "region")}
-      onDeleteRegion={action("DELETE_REGION", "region")}
-      onBeginBoxTransform={action("BEGIN_BOX_TRANSFORM", "box", "directions")}
-      onBeginMovePolygonPoint={action(
-        "BEGIN_MOVE_POLYGON_POINT",
-        "polygon",
-        "pointIndex"
-      )}
-      onBeginMoveKeypoint={action(
-        "BEGIN_MOVE_KEYPOINT",
-        "region",
-        "keypointId"
-      )}
-      onAddPolygonPoint={action(
-        "ADD_POLYGON_POINT",
-        "polygon",
-        "point",
-        "pointIndex"
-      )}
-      onSelectRegion={action("SELECT_REGION", "region")}
-      onBeginMovePoint={action("BEGIN_MOVE_POINT", "point")}
-      onImageLoaded={action("IMAGE_LOADED", "image")}
-      RegionEditLabel={RegionEditLabel}
-      onImageOrVideoLoaded={action("IMAGE_OR_VIDEO_LOADED", "metadata")}
-      onChangeVideoTime={action("CHANGE_VIDEO_TIME", "newTime")}
-      onChangeVideoPlaying={action("CHANGE_VIDEO_PLAYING", "isPlaying")}
-      onRegionClassAdded={onRegionClassAdded}
-      allowComments={state.allowComments}
-    />
-  )
-
-  const onClickIconSidebarItem = useEventCallback((item) => {
-    dispatch({ type: "SELECT_TOOL", selectedTool: item.name })
-  })
-
-  const onClickHeaderItem = useEventCallback((item) => {
-    if (item.name === "Fullscreen") {
-      fullScreenHandle.enter()
-    } else if (item.name === "Window") {
-      fullScreenHandle.exit()
+    key={state.selectedImage}
+    showMask={state.showMask}
+    fullImageSegmentationMode={state.fullImageSegmentationMode}
+    autoSegmentationOptions={state.autoSegmentationOptions}
+    showTags={state.showTags}
+    allowedArea={state.allowedArea}
+    modifyingAllowedArea={state.selectedTool === "modify-allowed-area"}
+    regionClsList={state.regionClsList}
+    regionTagList={state.regionTagList}
+    regions={
+      state.annotationType === "image"
+        ? activeImage.regions || []
+        : impliedVideoRegions
     }
-    dispatch({ type: "HEADER_BUTTON_CLICKED", buttonName: item.name })
-  })
+    realSize={activeImage ? activeImage.realSize : undefined}
+    videoPlaying={state.videoPlaying}
+    imageSrc={state.annotationType === "image" ? activeImage.src : null}
+    videoSrc={state.annotationType === "video" ? state.videoSrc : null}
+    pointDistancePrecision={state.pointDistancePrecision}
+    createWithPrimary={state.selectedTool.includes("create")}
+    dragWithPrimary={state.selectedTool === "pan"}
+    zoomWithPrimary={state.selectedTool === "zoom"}
+    showPointDistances={state.showPointDistances}
+    videoTime={
+      state.annotationType === "image"
+        ? state.selectedImageFrameTime
+        : state.currentVideoTime
+    }
+    keypointDefinitions={state.keypointDefinitions}
+    onMouseMove={action("MOUSE_MOVE")}
+    onMouseDown={action("MOUSE_DOWN")}
+    onMouseUp={action("MOUSE_UP")}
+    onChangeRegion={action("CHANGE_REGION", "region")}
+    onBeginRegionEdit={action("OPEN_REGION_EDITOR", "region")}
+    onCloseRegionEdit={action("CLOSE_REGION_EDITOR", "region")}
+    onDeleteRegion={action("DELETE_REGION", "region")}
+    onBeginBoxTransform={action("BEGIN_BOX_TRANSFORM", "box", "directions")}
+    onBeginMovePolygonPoint={action(
+      "BEGIN_MOVE_POLYGON_POINT",
+      "polygon",
+      "pointIndex"
+    )}
+    onBeginMoveKeypoint={action(
+      "BEGIN_MOVE_KEYPOINT",
+      "region",
+      "keypointId"
+    )}
+    onAddPolygonPoint={action(
+      "ADD_POLYGON_POINT",
+      "polygon",
+      "point",
+      "pointIndex"
+    )}
+    onSelectRegion={action("SELECT_REGION", "region")}
+    onBeginMovePoint={action("BEGIN_MOVE_POINT", "point")}
+    onImageLoaded={action("IMAGE_LOADED", "image")}
+    RegionEditLabel={RegionEditLabel}
+    onImageOrVideoLoaded={action("IMAGE_OR_VIDEO_LOADED", "metadata")}
+    onChangeVideoTime={action("CHANGE_VIDEO_TIME", "newTime")}
+    onChangeVideoPlaying={action("CHANGE_VIDEO_PLAYING", "isPlaying")}
+    onRegionClassAdded={onRegionClassAdded}
+    allowComments={state.allowComments}
+  />
+)
 
-  const debugModeOn = Boolean(window.localStorage.$ANNOTATE_DEBUG_MODE && state)
-  const nextImageHasRegions =
-    !nextImage || (nextImage.regions && nextImage.regions.length > 0)
+const onClickIconSidebarItem = useEventCallback((item) => {
+  dispatch({ type: "SELECT_TOOL", selectedTool: item.name })
+})
 
-  return (
-    <FullScreenContainer>
-      <FullScreen
-        handle={fullScreenHandle}
-        onChange={(open) => {
-          if (!open) {
-            fullScreenHandle.exit()
-            action("HEADER_BUTTON_CLICKED", "buttonName")("Window")
-          }
-        }}
+const onClickHeaderItem = useEventCallback((item) => {
+  if (item.name === "Fullscreen") {
+    fullScreenHandle.enter()
+  } else if (item.name === "Window") {
+    fullScreenHandle.exit()
+  }
+  dispatch({ type: "HEADER_BUTTON_CLICKED", buttonName: item.name })
+})
+
+const debugModeOn = Boolean(window.localStorage.$ANNOTATE_DEBUG_MODE && state)
+const nextImageHasRegions =
+  !nextImage || (nextImage.regions && nextImage.regions.length > 0)
+
+return (
+  <FullScreenContainer>
+    <FullScreen
+      handle={fullScreenHandle}
+      onChange={(open) => {
+        if (!open) {
+          fullScreenHandle.exit()
+          action("HEADER_BUTTON_CLICKED", "buttonName")("Window")
+        }
+      }}
+    >
+      <HotkeyDiv
+        tabIndex={-1}
+        divRef={innerContainerRef}
+        onMouseDown={refocusOnMouseEvent}
+        onMouseOver={refocusOnMouseEvent}
+        allowChanges
+        handlers={hotkeyHandlers}
+        className={classnames(
+          classes.container,
+          state.fullScreen && "Fullscreen"
+        )}
       >
-        <HotkeyDiv
-          tabIndex={-1}
-          divRef={innerContainerRef}
-          onMouseDown={refocusOnMouseEvent}
-          onMouseOver={refocusOnMouseEvent}
-          allowChanges
-          handlers={hotkeyHandlers}
-          className={classnames(
-            classes.container,
-            state.fullScreen && "Fullscreen"
-          )}
-        >
-          <Workspace
-            allowFullscreen
-            iconDictionary={iconDictionary}
-            hideHeader={hideHeader}
-            hideHeaderText={hideHeaderText}
-            headerLeftSide={[
-              state.annotationType === "video" ? (
-                <KeyframeTimeline
-                  currentTime={state.currentVideoTime}
-                  duration={state.videoDuration}
-                  onChangeCurrentTime={action("CHANGE_VIDEO_TIME", "newTime")}
-                  keyframes={state.keyframes}
-                />
-              ) : activeImage ? (
-                <div className={classes.headerTitle}>{activeImage.name}</div>
-              ) : null,
-            ].filter(Boolean)}
-            headerItems={[
-              !hidePrev && { name: "Prev" },
-              !hideNext && { name: "Next" },
-              state.annotationType !== "video"
-                ? null
-                : !state.videoPlaying
+        <Workspace
+          allowFullscreen
+          iconDictionary={iconDictionary}
+          hideHeader={hideHeader}
+          hideHeaderText={hideHeaderText}
+          headerLeftSide={[
+            state.annotationType === "video" ? (
+              <KeyframeTimeline
+                currentTime={state.currentVideoTime}
+                duration={state.videoDuration}
+                onChangeCurrentTime={action("CHANGE_VIDEO_TIME", "newTime")}
+                keyframes={state.keyframes}
+              />
+            ) : activeImage ? (
+              <div className={classes.headerTitle}>{activeImage.name}</div>
+            ) : null,
+          ].filter(Boolean)}
+          headerItems={[
+            !hidePrev && { name: "Prev" },
+            !hideNext && { name: "Next" },
+            state.annotationType !== "video"
+              ? null
+              : !state.videoPlaying
                 ? { name: "Play" }
                 : { name: "Pause" },
-              !nextImageHasRegions && activeImage.regions && { name: "Clone" },
-              { name: "Settings" },
-              state.fullScreen ? { name: "Window" } : { name: "Fullscreen" },
-              { name: "Save" },
-            ].filter(Boolean)}
-            onClickHeaderItem={onClickHeaderItem}
-            onClickIconSidebarItem={onClickIconSidebarItem}
-            selectedTools={[
-              state.selectedTool,
-              state.showTags && "show-tags",
-              state.showMask && "show-mask",
-            ].filter(Boolean)}
-            iconSidebarItems={[
-              {
-                name: "select",
-                helperText: "Select" + getHotkeyHelpText("select_tool"),
-                alwaysShowing: true,
-              },
-              {
-                name: "pan",
-                helperText:
-                  "Drag/Pan (right or middle click)" +
-                  getHotkeyHelpText("pan_tool"),
-                alwaysShowing: true,
-              },
-              {
-                name: "zoom",
-                helperText:
-                  "Zoom In/Out (scroll)" + getHotkeyHelpText("zoom_tool"),
-                alwaysShowing: true,
-              },
-              {
-                name: "show-tags",
-                helperText: "Show / Hide Tags",
-                alwaysShowing: true,
-              },
-              {
-                name: "create-point",
-                helperText: "Add Point" + getHotkeyHelpText("create_point"),
-              },
-              {
-                name: "create-box",
-                helperText:
-                  "Add Bounding Box" + getHotkeyHelpText("create_bounding_box"),
-              },
-              {
-                name: "create-polygon",
-                helperText: "Add Polygon" + getHotkeyHelpText("create_polygon"),
-              },
-              {
-                name: "create-line",
-                helperText: "Add Line",
-              },
-              {
-                name: "create-expanding-line",
-                helperText: "Add Expanding Line",
-              },
-              {
-                name: "create-keypoints",
-                helperText: "Add Keypoints (Pose)",
-              },
-              state.fullImageSegmentationMode && {
-                name: "show-mask",
-                alwaysShowing: true,
-                helperText: "Show / Hide Mask",
-              },
-              {
-                name: "modify-allowed-area",
-                helperText: "Modify Allowed Area",
-              },
-            ]
-              .filter(Boolean)
-              .filter(
-                (a) => a.alwaysShowing || state.enabledTools.includes(a.name)
-              )}
-            rightSidebarItems={[
-              debugModeOn && (
-                <DebugBox state={debugModeOn} lastAction={state.lastAction} />
-              ),
-              state.taskDescription && (
-                <TaskDescription description={state.taskDescription} />
-              ),
-              state.regionClsList && (
-                <ClassSelectionMenu
-                  selectedCls={state.selectedCls}
-                  regionClsList={state.regionClsList}
-                  onSelectCls={action("SELECT_CLASSIFICATION", "cls")}
-                />
-              ),
-              state.labelImages && (
-                <TagsSidebarBox
-                  currentImage={activeImage}
-                  imageClsList={state.imageClsList}
-                  imageTagList={state.imageTagList}
-                  onChangeImage={action("CHANGE_IMAGE", "delta")}
-                  expandedByDefault
-                />
-              ),
-              // (state.images?.length || 0) > 1 && (
-              //   <ImageSelector
-              //     onSelect={action("SELECT_REGION", "region")}
-              //     images={state.images}
-              //   />
-              // ),
-              <RegionSelector
-                regions={activeImage ? activeImage.regions : emptyArr}
-                onSelectRegion={action("SELECT_REGION", "region")}
-                onDeleteRegion={action("DELETE_REGION", "region")}
-                onChangeRegion={action("CHANGE_REGION", "region")}
-              />,
-              state.keyframes && (
-                <KeyframesSelector
-                  onChangeVideoTime={action("CHANGE_VIDEO_TIME", "newTime")}
-                  onDeleteKeyframe={action("DELETE_KEYFRAME", "time")}
-                  onChangeCurrentTime={action("CHANGE_VIDEO_TIME", "newTime")}
-                  currentTime={state.currentVideoTime}
-                  duration={state.videoDuration}
-                  keyframes={state.keyframes}
-                />
-              ),
-              <HistorySidebarBox
-                history={state.history}
-                onRestoreHistory={action("RESTORE_HISTORY")}
-              />,
-            ].filter(Boolean)}
-          >
-            {canvas}
-          </Workspace>
-          <SettingsDialog
-            open={state.settingsOpen}
-            onClose={() =>
-              dispatch({
-                type: "HEADER_BUTTON_CLICKED",
-                buttonName: "Settings",
-              })
-            }
-          />
-        </HotkeyDiv>
-      </FullScreen>
-    </FullScreenContainer>
-  )
+            !nextImageHasRegions && activeImage.regions && { name: "Clone" },
+            { name: "Settings" },
+            state.fullScreen ? { name: "Window" } : { name: "Fullscreen" },
+            { name: "Save" },
+          ].filter(Boolean)}
+          onClickHeaderItem={onClickHeaderItem}
+          onClickIconSidebarItem={onClickIconSidebarItem}
+          selectedTools={[
+            state.selectedTool,
+            state.showTags && "show-tags",
+            state.showMask && "show-mask",
+          ].filter(Boolean)}
+          iconSidebarItems={[
+            {
+              key: 1,
+              name: "select",
+              helperText: "Select" + getHotkeyHelpText("select_tool"),
+              alwaysShowing: true,
+            },
+            {
+              key: 2,
+              name: "pan",
+              helperText:
+                "Drag/Pan (right or middle click)" +
+                getHotkeyHelpText("pan_tool"),
+              alwaysShowing: true,
+            },
+            {
+              key: 3,
+              name: "zoom",
+              helperText:
+                "Zoom In/Out (scroll)" + getHotkeyHelpText("zoom_tool"),
+              alwaysShowing: true,
+            },
+            {
+              key: 4,
+              name: "show-tags",
+              helperText: "Show / Hide Tags",
+              alwaysShowing: true,
+            },
+            {
+              key: 5,
+              name: "create-point",
+              helperText: "Add Point" + getHotkeyHelpText("create_point"),
+            },
+            {
+              key: 6,
+              name: "create-box",
+              helperText:
+                "Add Bounding Box" + getHotkeyHelpText("create_bounding_box"),
+            },
+            {
+              key: 7,
+              name: "create-polygon",
+              helperText: "Add Polygon" + getHotkeyHelpText("create_polygon"),
+            },
+            {
+              key: 8,
+              name: "create-line",
+              helperText: "Add Line",
+            },
+            {
+              key: 9,
+              name: "create-expanding-line",
+              helperText: "Add Expanding Line",
+            },
+            {
+              key: 10,
+              name: "create-keypoints",
+              helperText: "Add Keypoints (Pose)",
+            },
+            state.fullImageSegmentationMode && {
+              key: 11,
+              name: "show-mask",
+              alwaysShowing: true,
+              helperText: "Show / Hide Mask",
+            },
+            {
+              key: 12,
+              name: "modify-allowed-area",
+              helperText: "Modify Allowed Area",
+            },
+          ]
+            .filter(Boolean)
+            .filter(
+              (a) => a.alwaysShowing || state.enabledTools.includes(a.name)
+            )}
+          rightSidebarItems={[
+            debugModeOn && (
+              <DebugBox key={"debug-box"} state={debugModeOn} lastAction={state.lastAction} />
+            ),
+            state.taskDescription && (
+              <TaskDescription key={"task-description"} description={state.taskDescription} />
+            ),
+            state.regionClsList && (
+              <ClassSelectionMenu
+                key={"class-selection-menu"}
+                selectedCls={state.selectedCls}
+                regionClsList={state.regionClsList}
+                onSelectCls={action("SELECT_CLASSIFICATION", "cls")}
+              />
+            ),
+            state.labelImages && (
+              <TagsSidebarBox
+                key={"tag-sidebar-box"}
+                currentImage={activeImage}
+                imageClsList={state.imageClsList}
+                imageTagList={state.imageTagList}
+                onChangeImage={action("CHANGE_IMAGE", "delta")}
+                expandedByDefault
+              />
+            ),
+            <RegionSelector
+              key={'region-selector'}
+              regions={activeImage ? activeImage.regions : emptyArr}
+              onSelectRegion={action("SELECT_REGION", "region")}
+              onDeleteRegion={action("DELETE_REGION", "region")}
+              onChangeRegion={action("CHANGE_REGION", "region")}
+            />,
+            state.keyframes && (
+              <KeyframesSelector
+                key={'key-frames-selector'}
+                onChangeVideoTime={action("CHANGE_VIDEO_TIME", "newTime")}
+                onDeleteKeyframe={action("DELETE_KEYFRAME", "time")}
+                onChangeCurrentTime={action("CHANGE_VIDEO_TIME", "newTime")}
+                currentTime={state.currentVideoTime}
+                duration={state.videoDuration}
+                keyframes={state.keyframes}
+              />
+            ),
+            <HistorySidebarBox
+              key={'history-sidebar-box'}
+              history={state.history}
+              onRestoreHistory={action("RESTORE_HISTORY")}
+            />,
+          ].filter(Boolean)}
+        >
+          {canvas}
+        </Workspace>
+        <SettingsDialog
+          open={state.settingsOpen}
+          onClose={() =>
+            dispatch({
+              type: "HEADER_BUTTON_CLICKED",
+              buttonName: "Settings",
+            })
+          }
+        />
+      </HotkeyDiv>
+    </FullScreen>
+  </FullScreenContainer>
+)
 }
 
 export default MainLayout
